@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Nexora Analytics</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <!-- ============================== Écran de connexion ============================== -->
+  <section id="login" class="login hidden">
+    <div class="login-card">
+      <div class="brand brand-lg">
+        <div class="brand-logo"><svg viewBox="0 0 32 32"><use href="#i-logo"/></svg></div>
+        <div><div class="brand-name">Nexora <span>Analytics</span></div><div class="brand-sub">Tableau de bord du réseau</div></div>
+      </div>
+      <h1>Accès réservé aux administrateurs</h1>
+      <p>Pour vous connecter, tapez la commande suivante en jeu puis cliquez sur le lien reçu dans le chat.</p>
+      <div class="cmd"><span>/</span>analytics</div>
+      <p id="login-error" class="login-error hidden">Ce lien est invalide ou a expiré. Générez-en un nouveau avec <b>/analytics</b>.</p>
+      <p class="muted small">Le lien est personnel, valable quelques minutes et utilisable une seule fois.</p>
+    </div>
+  </section>
+
+  <!-- ============================== Application ============================== -->
+  <div id="app" class="app hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-logo"><svg viewBox="0 0 32 32"><use href="#i-logo"/></svg></div>
+        <div><div class="brand-name">Nexora <span>Analytics</span></div><div class="brand-sub">Réseau Minecraft</div></div>
+      </div>
+      <nav class="nav" id="nav">
+        <a href="#overview" data-page="overview"><svg><use href="#i-grid"/></svg>Vue d'ensemble</a>
+        <a href="#players" data-page="players"><svg><use href="#i-users"/></svg>Joueurs</a>
+        <a href="#engagement" data-page="engagement"><svg><use href="#i-activity"/></svg>Rétention & activité</a>
+        <a href="#economy" data-page="economy"><svg><use href="#i-coins"/></svg>Économie</a>
+        <a href="#islands" data-page="islands"><svg><use href="#i-island"/></svg>Îles & progression</a>
+        <a href="#resources" data-page="resources"><svg><use href="#i-box"/></svg>Ressources</a>
+        <a href="#network" data-page="network"><svg><use href="#i-server"/></svg>Réseau & serveurs</a>
+        <a href="#incidents" data-page="incidents"><svg><use href="#i-alert"/></svg>Incidents<span class="nav-badge hidden" id="incident-badge">0</span></a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="admin">
+          <div class="admin-avatar" id="admin-avatar">?</div>
+          <div><div class="admin-name" id="admin-name">—</div><div class="muted small">Administrateur</div></div>
+        </div>
+        <button class="icon-btn" id="logout" title="Se déconnecter"><svg><use href="#i-logout"/></svg></button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menu-btn" title="Menu"><svg><use href="#i-menu"/></svg></button>
+        <div class="topbar-title">
+          <h1 id="page-title">Vue d'ensemble</h1>
+          <div class="muted small" id="updated">Chargement…</div>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-pill" title="Joueurs connectés au réseau"><span class="pulse"></span><b id="live-online">0</b>&nbsp;en ligne</div>
+          <div class="segmented" id="range">
+            <button data-range="7">7 j</button>
+            <button data-range="14">14 j</button>
+            <button data-range="30" class="active">30 j</button>
+            <button data-range="90">90 j</button>
+          </div>
+          <button class="icon-btn" id="refresh" title="Actualiser"><svg><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- ------------------------------ Vue d'ensemble ------------------------------ -->
+        <section class="page" id="page-overview">
+          <div class="kpi-grid" id="kpi-overview"></div>
+          <div class="grid g-3-1">
+            <div class="card">
+              <div class="card-head"><div><h3>Joueurs actifs par jour</h3><p>Joueurs distincts connectés et nouveaux joueurs</p></div></div>
+              <div class="chart-box h-300"><canvas id="c-daily"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Retour des joueurs</h3><p>Rétention J1 / J7 / J30</p></div></div>
+              <div class="rings" id="rings-overview"></div>
+            </div>
+          </div>
+          <div class="grid g-2">
+            <div class="card">
+              <div class="card-head"><div><h3>Joueurs en ligne — 24 h</h3><p>Moyenne par tranche de 10 min, par serveur</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-timeline"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Heures d'affluence</h3><p>Joueurs en ligne en moyenne selon l'heure</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-hours"></canvas></div>
+            </div>
+          </div>
+          <div class="grid g-2">
+            <div class="card">
+              <div class="card-head"><div><h3>En ligne maintenant</h3><p>Serveur, version et client de chaque joueur</p></div><span class="chip" id="live-count-chip">0</span></div>
+              <div class="table-wrap max-h-360"><table class="table" id="t-live"></table></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Serveurs du réseau</h3><p>État, joueurs et performances</p></div></div>
+              <div class="server-list" id="servers-mini"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Joueurs ------------------------------ -->
+        <section class="page" id="page-players">
+          <div class="card">
+            <div class="card-head wrap">
+              <div><h3>Tous les joueurs</h3><p id="players-total">—</p></div>
+              <div class="toolbar">
+                <label class="search"><svg><use href="#i-search"/></svg><input id="player-search" placeholder="Rechercher un pseudo ou un UUID…" autocomplete="off"></label>
+                <select id="player-sort" class="select">
+                  <option value="last">Dernière connexion</option>
+                  <option value="first">Première connexion</option>
+                  <option value="playtime">Temps de jeu</option>
+                  <option value="sessions">Connexions</option>
+                  <option value="name">Pseudo</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap"><table class="table table-hover" id="t-players"></table></div>
+            <div class="pager" id="players-pager"></div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Rétention & activité ------------------------------ -->
+        <section class="page" id="page-engagement">
+          <div class="kpi-grid" id="kpi-engagement"></div>
+          <div class="grid g-1-2">
+            <div class="card">
+              <div class="card-head"><div><h3>Rétention</h3><p>Part des nouveaux joueurs revenus N jours après leur arrivée</p></div></div>
+              <div class="rings" id="rings-engagement"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Cohortes hebdomadaires</h3><p>% de joueurs revenus N jours après leur première connexion, par semaine d'arrivée</p></div></div>
+              <div class="table-wrap"><table class="table cohort" id="t-cohorts"></table></div>
+            </div>
+          </div>
+          <div class="grid g-2">
+            <div class="card">
+              <div class="card-head"><div><h3>Connexions & déconnexions</h3><p>Par jour sur la période</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-connections"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Temps de jeu moyen</h3><p>Par joueur actif et par jour</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-playtime"></canvas></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>Carte de chaleur hebdomadaire</h3><p>Joueurs en ligne en moyenne par jour de la semaine et par heure</p></div></div>
+            <div class="heatmap" id="heatmap"></div>
+          </div>
+          <div class="grid g-2">
+            <div class="card">
+              <div class="card-head"><div><h3>🔥 Streaks en cours</h3><p>Jours de connexion consécutifs</p></div></div>
+              <div class="leaderboard" id="streaks"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>💤 Joueurs devenus inactifs</h3><p id="inactive-sub">—</p></div></div>
+              <div class="chart-box h-180"><canvas id="c-inactive"></canvas></div>
+              <div class="table-wrap max-h-260"><table class="table table-hover" id="t-lost"></table></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Économie ------------------------------ -->
+        <section class="page" id="page-economy">
+          <div class="kpi-grid" id="kpi-economy"></div>
+          <div class="card">
+            <div class="card-head"><div><h3>Flux économiques</h3><p>Argent gagné et dépensé par jour (via Vault)</p></div></div>
+            <div class="chart-box h-300"><canvas id="c-economy"></canvas></div>
+          </div>
+          <div class="grid g-3">
+            <div class="card">
+              <div class="card-head"><div><h3>Par serveur</h3><p>Sur la période</p></div></div>
+              <div class="chart-box h-240"><canvas id="c-eco-servers"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Plus gros gains</h3><p>Depuis l'installation</p></div></div>
+              <div class="leaderboard" id="top-earners"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Plus grosses dépenses</h3><p>Depuis l'installation</p></div></div>
+              <div class="leaderboard" id="top-spenders"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Îles ------------------------------ -->
+        <section class="page" id="page-islands">
+          <div class="notice hidden" id="islands-missing">
+            <svg><use href="#i-info"/></svg>
+            <div>Aucune donnée d'île reçue pour l'instant. Installez le plugin <b>NexoraAnalytics-Paper</b> sur le serveur qui héberge <b>NexoraMc</b> : les statistiques apparaîtront après le premier envoi (1 minute).</div>
+          </div>
+          <div class="kpi-grid" id="kpi-islands"></div>
+          <div class="grid g-2">
+            <div class="card">
+              <div class="card-head"><div><h3>Îles créées</h3><p>Par jour sur la période</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-islands"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Chunks débloqués</h3><p>Surface gagnée par agrandissement de bordure</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-chunks"></canvas></div>
+            </div>
+          </div>
+          <div class="grid g-1-2">
+            <div class="card">
+              <div class="card-head"><div><h3>Répartition des niveaux</h3><p>Nombre d'îles par niveau</p></div></div>
+              <div class="chart-box h-300"><canvas id="c-levels"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>🏆 Classement des îles</h3><p>Les plus grands territoires</p></div></div>
+              <div class="table-wrap"><table class="table" id="t-islands"></table></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Ressources ------------------------------ -->
+        <section class="page" id="page-resources">
+          <div class="kpi-grid" id="kpi-resources"></div>
+          <div class="grid g-3">
+            <div class="card">
+              <div class="card-head"><div><h3>⛏️ Blocs minés</h3><p>Top matériaux</p></div></div>
+              <div class="chart-box h-380"><canvas id="c-res-break"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>🧱 Blocs posés</h3><p>Top matériaux</p></div></div>
+              <div class="chart-box h-380"><canvas id="c-res-place"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>🛠️ Objets fabriqués</h3><p>Top objets</p></div></div>
+              <div class="chart-box h-380"><canvas id="c-res-craft"></canvas></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Réseau ------------------------------ -->
+        <section class="page" id="page-network">
+          <div class="server-cards" id="server-cards"></div>
+          <div class="grid g-3">
+            <div class="card">
+              <div class="card-head"><div><h3>Temps de jeu par serveur</h3><p>Sur la période</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-srv-playtime"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>🖥️ Versions de Minecraft</h3><p>Joueurs actifs sur la période</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-versions"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div><h3>Clients utilisés</h3><p>Vanilla, Fabric, Lunar…</p></div></div>
+              <div class="chart-box h-260"><canvas id="c-brands"></canvas></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div><h3>📊 Pics de joueurs simultanés</h3><p>Maximum atteint chaque jour</p></div></div>
+            <div class="chart-box h-240"><canvas id="c-peaks"></canvas></div>
+          </div>
+        </section>
+
+        <!-- ------------------------------ Incidents ------------------------------ -->
+        <section class="page" id="page-incidents">
+          <div class="kpi-grid" id="kpi-incidents"></div>
+          <div class="card">
+            <div class="card-head"><div><h3>Incidents par jour</h3><p>Crashs, erreurs et coupures sur la période</p></div></div>
+            <div class="chart-box h-220"><canvas id="c-incidents"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head wrap">
+              <div><h3>Journal des incidents</h3><p>Les 60 plus récents — cliquez pour voir le détail</p></div>
+              <div class="segmented small" id="incident-filter">
+                <button data-type="" class="active">Tous</button>
+                <button data-type="CRASH">Crashs</button>
+                <button data-type="ERROR">Erreurs</button>
+                <button data-type="DOWN">Coupures</button>
+              </div>
+            </div>
+            <div class="incident-list" id="incident-list"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================== Fiche joueur ============================== -->
+  <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card">
+      <button class="icon-btn modal-close" data-close title="Fermer"><svg><use href="#i-x"/></svg></button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- ============================== Icônes ============================== -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-logo" viewBox="0 0 32 32"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><path fill="url(#lg)" d="M16 2 28 9v14l-12 7L4 23V9z"/><path fill="#0b0d17" opacity=".85" d="M11 21V11h2.2l5.6 6.4V11H21v10h-2.2l-5.6-6.4V21z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+    <symbol id="i-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82"/></symbol>
+    <symbol id="i-island" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M5 16c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5"/><path d="M12 11.5V4m0 0c-2 0-4 1-5 3m5-3c2 0 4 1 5 3"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  </svg>
+
+  <script src="/assets/chart.umd.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

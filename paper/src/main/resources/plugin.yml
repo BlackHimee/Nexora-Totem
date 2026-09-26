@@ -1,0 +1,9 @@
+name: NexoraAnalytics
+version: '${project.version}'
+main: fr.astra.nexora.analytics.paper.NexoraAnalyticsPaper
+api-version: '1.21'
+author: Astra
+description: Collecte les statistiques du serveur (économie, îles, ressources, santé, erreurs) pour le dashboard Nexora Analytics.
+softdepend:
+  - Vault
+  - NexoraMc

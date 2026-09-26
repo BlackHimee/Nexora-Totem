@@ -1,0 +1,32 @@
+# =====================================================================
+#  Nexora Analytics - collecteur Paper
+# =====================================================================
+# Ce plugin n'affiche rien lui-même : il envoie ses données au plugin
+# Nexora Analytics installé sur le proxy Velocity, qui héberge le dashboard.
+
+# Nom de CE serveur, EXACTEMENT tel qu'il est déclaré dans velocity.toml
+# (section [servers]). Exemple : "skyblock", "lobby", "survie".
+server-name: ""
+
+# Adresse du serveur web du proxy (bind-address / port de son config.properties).
+# Si le proxy est sur la même machine : http://127.0.0.1:8765
+proxy-url: "http://127.0.0.1:8765"
+
+# Secret d'ingestion : copiez la valeur "ingest-secret" du fichier
+# plugins/nexora-analytics/config.properties du proxy
+# (ou tapez "analytics secret" dans la console du proxy).
+secret: ""
+
+# Fréquence d'envoi des données au proxy (secondes).
+send-interval-seconds: 60
+
+collect:
+  # Argent gagné / dépensé (via Vault) : mesuré par variation du solde des joueurs connectés.
+  economy: true
+  economy-sample-seconds: 30
+  # Blocs cassés / posés et objets fabriqués (joueurs hors mode créatif).
+  resources: true
+  # Îles NexoraMc : créations, chunks débloqués, niveaux, progression.
+  islands: true
+  # Erreurs de la console (niveau ERROR / FATAL) et arrêts anormaux.
+  errors: true
