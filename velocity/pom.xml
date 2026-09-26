@@ -37,6 +37,12 @@
                 <configuration>
                     <release>${java.version}</release>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                    <!--
+                        velocity-plugin.json est fourni dans src/main/resources : on désactive le
+                        processeur d'annotations de Velocity (non exécuté par défaut depuis le JDK 23)
+                        pour obtenir le même jar quel que soit le JDK utilisé.
+                    -->
+                    <proc>none</proc>
                 </configuration>
             </plugin>
             <!-- Embarque le driver SQLite (non fourni par Velocity). -->

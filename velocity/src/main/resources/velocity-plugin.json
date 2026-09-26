@@ -1,0 +1,9 @@
+{
+  "id": "nexora-analytics",
+  "name": "Nexora Analytics",
+  "version": "1.0.0",
+  "description": "Dashboard web d'analytics pour le réseau Nexora",
+  "authors": ["Astra"],
+  "dependencies": [],
+  "main": "fr.astra.nexora.analytics.velocity.NexoraAnalyticsVelocity"
+}
