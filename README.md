@@ -35,7 +35,7 @@ Le projet produit deux plugins :
    ```bash
    mvn clean package
    ```
-   Les jars sont dans `velocity/target/` et `paper/target/`.
+   Les jars sont dans `velocity/target/` et `paper/target/`. Chaque module est autonome : vous pouvez aussi lancer `mvn clean package` directement dans `velocity/` ou dans `paper/`.
 
 2. **Proxy Velocity** : placez `NexoraAnalytics-Velocity-1.0.0.jar` dans `plugins/`, démarrez le proxy une fois, puis éditez `plugins/nexora-analytics/config.properties` :
    - `public-url` : l'adresse à laquelle **vous** ouvrirez le dashboard dans votre navigateur (ex. `http://123.45.67.89:8765`) ;

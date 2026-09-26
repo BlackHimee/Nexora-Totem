@@ -6,14 +6,26 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>fr.astra</groupId>
-        <artifactId>nexora-analytics-parent</artifactId>
-        <version>1.0.0</version>
-    </parent>
-
+    <!--
+        Module autonome (aucun POM parent) : il se compile aussi bien depuis la racine
+        du projet que seul, depuis son propre dossier.
+    -->
+    <groupId>fr.astra</groupId>
     <artifactId>nexora-analytics-velocity</artifactId>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+    </repositories>
 
     <build>
         <finalName>NexoraAnalytics-Velocity-${project.version}</finalName>
@@ -21,11 +33,17 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${java.version}</release>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
             </plugin>
             <!-- Embarque le driver SQLite (non fourni par Velocity). -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.3</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
