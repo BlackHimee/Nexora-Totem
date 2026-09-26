@@ -22,6 +22,7 @@ import org.bukkit.plugin.Plugin;
 public final class IslandCollector {
   private final Logger logger;
   private boolean warned;
+  private volatile String status = "non vérifié";
 
   public IslandCollector(Logger logger) {
     this.logger = logger;
@@ -30,7 +31,14 @@ public final class IslandCollector {
   /** Instantané des îles, ou {@code null} si NexoraMc n'est pas installé sur ce serveur. */
   public JsonObject snapshot() {
     Plugin plugin = Bukkit.getPluginManager().getPlugin("NexoraMc");
-    if (plugin == null || !plugin.isEnabled()) return null;
+    if (plugin == null) {
+      status = "NexoraMc absent sur ce serveur";
+      return null;
+    }
+    if (!plugin.isEnabled()) {
+      status = "NexoraMc installé mais désactivé (erreur au démarrage ?)";
+      return null;
+    }
     try {
       Object manager = call(plugin, "getIslands");
       Object levels = call(plugin, "getLevels");
@@ -54,14 +62,22 @@ public final class IslandCollector {
       JsonObject out = new JsonObject();
       out.add("list", list);
       warned = false;
+      status = "ok (" + list.size() + " île" + (list.size() > 1 ? "s" : "") + ")";
       return out;
     } catch (Throwable t) {
+      Throwable cause = t instanceof java.lang.reflect.InvocationTargetException && t.getCause() != null ? t.getCause() : t;
+      status = "erreur : " + cause;
       if (!warned) {
         warned = true;
-        logger.warning("Lecture des îles NexoraMc impossible (version incompatible ?) : " + t);
+        logger.warning("Lecture des îles NexoraMc impossible (version incompatible ?) : " + cause);
       }
       return null;
     }
+  }
+
+  /** État de la dernière lecture, affiché par /nanalytics et dans le dashboard. */
+  public String status() {
+    return status;
   }
 
   private static int completed(Object objectives) throws Exception {

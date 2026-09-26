@@ -7,3 +7,12 @@ description: Collecte les statistiques du serveur (économie, îles, ressources,
 softdepend:
   - Vault
   - NexoraMc
+commands:
+  nanalytics:
+    description: Diagnostic du collecteur Nexora Analytics
+    usage: /nanalytics [test]
+    permission: nexora.analytics.admin
+permissions:
+  nexora.analytics.admin:
+    description: Accès au diagnostic Nexora Analytics
+    default: op

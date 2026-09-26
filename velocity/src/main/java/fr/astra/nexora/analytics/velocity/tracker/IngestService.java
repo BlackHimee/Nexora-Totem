@@ -34,6 +34,7 @@ public final class IngestService {
   public void ingest(JsonObject payload) {
     String server = str(payload, "server", "inconnu");
     if (server.length() > 64) server = server.substring(0, 64);
+    server = monitor.canonicalName(server);
     long now = System.currentTimeMillis();
     String day = days.day(now);
 
@@ -49,6 +50,12 @@ public final class IngestService {
       h.loadedChunks = (int) dbl(health, "loadedChunks");
       h.entities = (int) dbl(health, "entities");
       h.serverVersion = str(health, "version", null);
+    }
+
+    if (payload.has("diagnostics") && payload.get("diagnostics").isJsonObject()) {
+      JsonObject diag = payload.getAsJsonObject("diagnostics");
+      h.economyStatus = str(diag, "economy", null);
+      h.islandsStatus = str(diag, "islands", null);
     }
 
     if (payload.has("crash") && payload.get("crash").isJsonObject()) {

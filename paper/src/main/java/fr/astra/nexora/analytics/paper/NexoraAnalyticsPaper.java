@@ -16,6 +16,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -79,7 +81,9 @@ public final class NexoraAnalyticsPaper extends JavaPlugin {
       // Premier envoi rapide pour que le serveur apparaisse tout de suite dans le dashboard.
       Bukkit.getScheduler().runTaskTimer(this, this::send, 100L, period);
     }
-    getLogger().info("Collecte active pour le serveur '" + serverName + "'.");
+    var command = getCommand("nanalytics");
+    if (command != null) command.setExecutor(this::onStatusCommand);
+    getLogger().info("Collecte active pour le serveur '" + serverName + "'. Diagnostic : /nanalytics");
   }
 
   @Override
@@ -97,6 +101,34 @@ public final class NexoraAnalyticsPaper extends JavaPlugin {
     } catch (IOException ignored) {
       // sans conséquence : au pire un faux « arrêt anormal » au prochain démarrage
     }
+  }
+
+  /** {@code /nanalytics [test]} : état du collecteur, pour diagnostiquer une installation. */
+  private boolean onStatusCommand(CommandSender sender, Command command, String label, String[] args) {
+    boolean secretSet = !getConfig().getString("secret", "").trim().isEmpty();
+    if (args.length > 0 && args[0].equalsIgnoreCase("test")) {
+      if (!secretSet) {
+        sender.sendMessage("§c[NexoraAnalytics] Impossible : 'secret' est vide dans config.yml.");
+        return true;
+      }
+      send();
+      sender.sendMessage("§a[NexoraAnalytics] Envoi de test lancé. Retapez §f/nanalytics§a dans 2 secondes pour voir le résultat.");
+      return true;
+    }
+    String proxyState = client.lastResult();
+    String color = proxyState.startsWith("OK") ? "§a" : proxyState.startsWith("aucun") ? "§e" : "§c";
+    sender.sendMessage("§d§lNexora§b§lAnalytics §8» §7Diagnostic du collecteur");
+    sender.sendMessage("§7Nom du serveur : §f" + serverName + " §8(doit être identique au nom dans velocity.toml)");
+    sender.sendMessage("§7Proxy : §f" + client.endpoint());
+    sender.sendMessage("§7Secret : " + (secretSet ? "§arenseigné" : "§cVIDE — copiez 'ingest-secret' du proxy"));
+    sender.sendMessage("§7Dernier envoi : " + color + proxyState
+        + (client.lastAttempt() > 0 ? " §8(" + TIME.format(Instant.ofEpochMilli(client.lastAttempt())) + ")" : ""));
+    if (client.pending() > 1) sender.sendMessage("§7Lots en attente d'envoi : §e" + client.pending());
+    sender.sendMessage("§7Économie : §f" + (economy == null ? "désactivée" : economy.status()));
+    sender.sendMessage("§7Îles NexoraMc : §f" + islands.status());
+    sender.sendMessage("§7Erreurs console : §f" + (errors != null ? "capturées" : "non capturées"));
+    sender.sendMessage("§8Astuce : /nanalytics test force un envoi immédiat.");
+    return true;
   }
 
   /**
@@ -151,6 +183,12 @@ public final class NexoraAnalyticsPaper extends JavaPlugin {
       JsonArray err = errors.drain();
       if (!err.isEmpty()) payload.add("errors", err);
     }
+    JsonObject diagnostics = new JsonObject();
+    diagnostics.addProperty("economy", economy == null ? "désactivé (collect.economy)" : economy.status());
+    diagnostics.addProperty("islands",
+        getConfig().getBoolean("collect.islands", true) ? islands.status() : "désactivé (collect.islands)");
+    diagnostics.addProperty("errors", errors != null ? "ok" : "indisponible");
+    payload.add("diagnostics", diagnostics);
     client.enqueue(payload);
     try {
       if (runningMarker != null) Files.setLastModifiedTime(runningMarker, FileTime.from(Instant.now()));

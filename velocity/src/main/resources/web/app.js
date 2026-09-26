@@ -201,8 +201,15 @@
   function chart(id, config) {
     const existing = state.charts[id];
     if (existing) {
-      existing.data = config.data;
-      existing.options = config.options || {};
+      // Mise à jour en place : seules les valeurs changent, le graphique glisse vers les nouvelles
+      // données au lieu d'être entièrement redessiné.
+      const next = config.data;
+      existing.data.labels = next.labels;
+      if (existing.data.datasets.length === next.datasets.length) {
+        next.datasets.forEach((ds, i) => Object.assign(existing.data.datasets[i], ds));
+      } else {
+        existing.data.datasets = next.datasets;
+      }
       existing.update();
       return existing;
     }
@@ -343,18 +350,19 @@
       return;
     }
     const max = Math.max(...rows.map(barFn), 1);
+    const settled = isSettled(box);
     box.innerHTML = rows
       .map(
         (r, i) => `
       <div class="lb-row" data-uuid="${esc(r.uuid || "")}" style="animation-delay:${i * 40}ms">
         <div class="lb-rank">${i + 1}</div>
         ${r.uuid ? `<img class="avatar" src="${avatar(r.uuid)}" alt="" loading="lazy">` : ""}
-        <div class="lb-name">${esc(r.name)}<div class="lb-bar"><i data-w="${(100 * barFn(r)) / max}"></i></div></div>
+        <div class="lb-name">${esc(r.name)}<div class="lb-bar"><i data-w="${(100 * barFn(r)) / max}" ${settled ? `style="width:${(100 * barFn(r)) / max}%"` : ""}></i></div></div>
         <div class="lb-value">${valueFn(r)}</div>
       </div>`
       )
       .join("");
-    requestAnimationFrame(() => box.querySelectorAll(".lb-bar i").forEach((b) => (b.style.width = b.dataset.w + "%")));
+    if (!settled) requestAnimationFrame(() => box.querySelectorAll(".lb-bar i").forEach((b) => (b.style.width = b.dataset.w + "%")));
   }
 
   function playerRow(p) {
@@ -519,6 +527,12 @@
     const d = state.data;
     const is = d.islands;
     $("islands-missing").classList.toggle("hidden", is.available);
+    if (!is.available) {
+      const reports = d.servers.filter((s) => s.islandsStatus);
+      $("islands-missing-detail").innerHTML = reports.length
+        ? "État remonté par les serveurs : " + reports.map((s) => `<b>${esc(s.name)}</b> → ${esc(s.islandsStatus)}`).join(" · ")
+        : "Aucun serveur Paper n'envoie encore de données au proxy : voir la page <b>Réseau & serveurs</b> et la commande <b>/nanalytics</b>.";
+    }
     renderKpis("kpi-islands", [
       { icon: "🏝️", label: "Îles existantes", value: is.total, color: "#22d3ee", sub: `${num(is.playersWithIsland)} joueurs membres (${dec(is.playersWithIslandPct)} %)` },
       { icon: "✨", label: "Îles créées aujourd'hui", value: is.createdToday, color: "#8b5cf6", sub: `${num(is.created7)} sur 7 j · ${num(is.createdRange)} sur ${d.range} j` },
@@ -565,7 +579,8 @@
     const d = state.data;
     const liveServers = state.live ? state.live.servers : [];
     const byName = Object.fromEntries((d ? d.servers : []).map((s) => [s.name, s]));
-    const list = liveServers.length ? liveServers : d ? d.servers : [];
+    const list = (liveServers.length ? liveServers : d ? d.servers : []).slice();
+    if (d) d.servers.forEach((s) => { if (!list.some((x) => x.name === s.name) && s.collector !== "absent") list.push(s); });
     $("server-cards").innerHTML = list.length
       ? list
           .map((s, i) => {
@@ -586,11 +601,29 @@
               <div class="stat-line"><span>MSPT</span><b>${s.mspt != null ? dec(s.mspt) + " ms" : "—"}</b></div>
               <div class="stat-line"><span>Chunks / entités</span><b>${s.loadedChunks != null ? num(s.loadedChunks) + " / " + num(s.entities) : "—"}</b></div>
               <div class="stat-line"><span>Temps de jeu (${d ? d.range : "?"} j)</span><b>${dur(playtime, true)}</b></div>
+              ${diagnostics(s)}
             </div>`;
           })
           .join("")
       : `<div class="card empty">Aucun serveur enregistré sur le proxy</div>`;
-    requestAnimationFrame(() => $("server-cards").querySelectorAll(".meter i").forEach((m) => (m.style.width = m.dataset.w + "%")));
+    const meters = $("server-cards").querySelectorAll(".meter i");
+    if (isSettled($("server-cards"))) meters.forEach((m) => (m.style.width = m.dataset.w + "%"));
+    else requestAnimationFrame(() => meters.forEach((m) => (m.style.width = m.dataset.w + "%")));
+  }
+
+  /** Aide au diagnostic affichée sous chaque carte serveur. */
+  function diagnostics(s) {
+    const lines = [];
+    if (s.registered === false) {
+      lines.push(`<div class="diag warn">⚠ Aucun serveur « ${esc(s.name)} » dans velocity.toml : corrigez <b>server-name</b> dans le config.yml de NexoraAnalytics sur ce serveur.</div>`);
+    } else if (s.collector === "absent") {
+      lines.push(`<div class="diag warn">Plugin Paper non connecté. Sur ce serveur : installez NexoraAnalytics-Paper avec <b>server-name: "${esc(s.name)}"</b>, puis tapez <b>/nanalytics</b> pour le diagnostic.</div>`);
+    } else if (s.collector === "stale") {
+      lines.push(`<div class="diag warn">Plus de données depuis ${ago(s.lastHeartbeat)}. Tapez <b>/nanalytics</b> sur ce serveur.</div>`);
+    }
+    if (s.economyStatus) lines.push(`<div class="diag">💰 Économie : ${esc(s.economyStatus)}</div>`);
+    if (s.islandsStatus) lines.push(`<div class="diag">🏝️ Îles : ${esc(s.islandsStatus)}</div>`);
+    return lines.join("");
   }
 
   function renderNetwork() {
@@ -724,6 +757,12 @@
     incidents: renderIncidents,
   };
 
+  /** Vrai une fois la page affichée et animée : les rafraîchissements suivants ne rejouent pas les animations. */
+  function isSettled(el) {
+    const page = el.closest(".page");
+    return !!page && page.classList.contains("settled");
+  }
+
   function renderPage() {
     if (state.page === "players") return;
     if (!state.data) return;
@@ -732,6 +771,8 @@
     } catch (e) {
       console.error(e);
     }
+    const section = $("page-" + state.page);
+    if (!section.classList.contains("settled")) setTimeout(() => section.classList.add("settled"), 1600);
   }
 
   function route() {

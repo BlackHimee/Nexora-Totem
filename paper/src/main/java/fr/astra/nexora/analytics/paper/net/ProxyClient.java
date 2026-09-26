@@ -26,12 +26,35 @@ public final class ProxyClient {
   private final Deque<String> pending = new ArrayDeque<>();
   private boolean sending;
   private boolean failing;
+  private volatile String lastResult = "aucun envoi pour l'instant";
+  private volatile long lastSuccess;
+  private volatile long lastAttempt;
 
   public ProxyClient(Logger logger, String proxyUrl, String secret) {
     this.logger = logger;
     String base = proxyUrl.endsWith("/") ? proxyUrl.substring(0, proxyUrl.length() - 1) : proxyUrl;
     this.endpoint = URI.create(base + "/api/ingest");
     this.secret = secret;
+  }
+
+  public String lastResult() {
+    return lastResult;
+  }
+
+  public long lastSuccess() {
+    return lastSuccess;
+  }
+
+  public long lastAttempt() {
+    return lastAttempt;
+  }
+
+  public URI endpoint() {
+    return endpoint;
+  }
+
+  public synchronized int pending() {
+    return pending.size();
   }
 
   public synchronized void enqueue(JsonObject payload) {
@@ -59,7 +82,18 @@ public final class ProxyClient {
   }
 
   private synchronized void onResult(String body, HttpResponse<Void> response, Throwable error) {
+    lastAttempt = System.currentTimeMillis();
+    if (error == null) {
+      lastResult = response.statusCode() == 200 ? "OK (HTTP 200)"
+          : response.statusCode() == 403 ? "REFUSÉ (HTTP 403) : le secret ne correspond pas à celui du proxy"
+          : "ERREUR HTTP " + response.statusCode();
+    } else {
+      Throwable cause = error.getCause() != null ? error.getCause() : error;
+      lastResult = "ÉCHEC : proxy injoignable à " + endpoint + " (" + cause.getClass().getSimpleName()
+          + (cause.getMessage() != null ? " : " + cause.getMessage() : "") + ")";
+    }
     if (error == null && response.statusCode() == 200) {
+      lastSuccess = lastAttempt;
       if (pending.peekFirst() == body) pending.removeFirst();
       if (failing) logger.info("Connexion au proxy Nexora Analytics rétablie.");
       failing = false;

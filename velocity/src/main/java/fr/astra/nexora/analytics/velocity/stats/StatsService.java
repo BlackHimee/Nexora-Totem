@@ -530,6 +530,10 @@ public final class StatsService {
     Set<String> names = new java.util.LinkedHashSet<>();
     for (RegisteredServer s : proxy.getAllServers()) names.add(s.getServerInfo().getName());
     names.addAll(playtime.keySet());
+    // Collecteurs Paper dont le server-name ne correspond à aucun serveur du proxy.
+    monitor.allHealth().forEach((name, h) -> {
+      if (h.lastHeartbeat > 0) names.add(name);
+    });
     for (String name : names) {
       Map<String, Object> row = serverStatus(name);
       row.put("playtimeMs", playtime.getOrDefault(name, 0L));
@@ -548,9 +552,11 @@ public final class StatsService {
     ServerMonitor.Health h = monitor.allHealth().get(name);
     long now = System.currentTimeMillis();
     if (h != null) {
-      row.put("status", !h.observed ? "unknown" : h.online ? "online" : "offline");
-      row.put("since", h.since);
       boolean fresh = now - h.lastHeartbeat < TimeUnit.MINUTES.toMillis(3);
+      String status = !h.observed ? "unknown" : h.online ? "online" : "offline";
+      if (server.isEmpty()) status = fresh ? "online" : "unknown"; // pas de ping possible : on se fie au collecteur
+      row.put("status", status);
+      row.put("since", h.since);
       row.put("collector", h.lastHeartbeat == 0 ? "absent" : fresh ? "ok" : "stale");
       row.put("lastHeartbeat", h.lastHeartbeat);
       row.put("tps", fresh ? round(h.tps, 2) : null);
@@ -561,6 +567,8 @@ public final class StatsService {
       row.put("entities", fresh ? h.entities : null);
       row.put("serverVersion", h.serverVersion);
       row.put("pluginVersion", h.pluginVersion);
+      row.put("economyStatus", h.economyStatus);
+      row.put("islandsStatus", h.islandsStatus);
     } else {
       row.put("status", "unknown");
       row.put("collector", "absent");
@@ -858,7 +866,14 @@ public final class StatsService {
     out.put("peakAll", tracker.peakAll());
     out.put("players", list);
     List<Map<String, Object>> servers = new ArrayList<>();
-    for (RegisteredServer s : proxy.getAllServers()) servers.add(serverStatus(s.getServerInfo().getName()));
+    Set<String> seen = new HashSet<>();
+    for (RegisteredServer s : proxy.getAllServers()) {
+      seen.add(s.getServerInfo().getName());
+      servers.add(serverStatus(s.getServerInfo().getName()));
+    }
+    monitor.allHealth().forEach((name, h) -> {
+      if (h.lastHeartbeat > 0 && !seen.contains(name)) servers.add(serverStatus(name));
+    });
     out.put("servers", servers);
     return out;
   }

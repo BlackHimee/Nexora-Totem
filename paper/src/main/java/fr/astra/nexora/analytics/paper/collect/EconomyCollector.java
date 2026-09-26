@@ -33,6 +33,7 @@ public final class EconomyCollector implements Listener {
   private Object economy;
   private Method getBalance;
   private boolean warned;
+  private volatile String status = "non vérifié";
 
   public EconomyCollector(Logger logger) {
     this.logger = logger;
@@ -40,16 +41,24 @@ public final class EconomyCollector implements Listener {
 
   private boolean ready() {
     if (economy != null) return true;
-    if (Bukkit.getPluginManager().getPlugin("Vault") == null) return false;
+    if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
+      status = "Vault absent sur ce serveur";
+      return false;
+    }
     try {
       Class<?> type = Class.forName("net.milkbowl.vault.economy.Economy");
       RegisteredServiceProvider<?> rsp = Bukkit.getServicesManager().getRegistration(type);
-      if (rsp == null) return false;
-      economy = rsp.getProvider();
+      if (rsp == null) {
+        status = "Vault présent mais aucun plugin d'économie enregistré";
+        return false;
+      }
       getBalance = type.getMethod("getBalance", OfflinePlayer.class);
+      economy = rsp.getProvider();
+      status = "ok (" + rsp.getPlugin().getName() + ")";
       logger.info("Économie Vault détectée : " + rsp.getPlugin().getName());
       return true;
     } catch (Throwable t) {
+      status = "erreur : " + t;
       if (!warned) {
         warned = true;
         logger.warning("Vault présent mais économie inaccessible : " + t.getMessage());
@@ -65,6 +74,10 @@ public final class EconomyCollector implements Listener {
     } catch (Throwable t) {
       return null;
     }
+  }
+
+  public String status() {
+    return status;
   }
 
   /** Relève le solde de tous les joueurs connectés. */

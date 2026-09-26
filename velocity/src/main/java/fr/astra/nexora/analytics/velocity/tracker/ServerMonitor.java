@@ -30,6 +30,8 @@ public final class ServerMonitor {
     public volatile int entities;
     public volatile String pluginVersion;
     public volatile String serverVersion;
+    public volatile String economyStatus;
+    public volatile String islandsStatus;
   }
 
   private final ProxyServer proxy;
@@ -60,6 +62,18 @@ public final class ServerMonitor {
         .delay(5, TimeUnit.SECONDS)
         .repeat(config.pingSeconds(), TimeUnit.SECONDS)
         .schedule();
+  }
+
+  /**
+   * Nom du serveur tel que déclaré dans velocity.toml si {@code name} n'en diffère que par la casse
+   * (« Skyblock » / « skyblock »), sinon {@code name} inchangé.
+   */
+  public String canonicalName(String name) {
+    for (RegisteredServer server : proxy.getAllServers()) {
+      String registered = server.getServerInfo().getName();
+      if (registered.equalsIgnoreCase(name)) return registered;
+    }
+    return name;
   }
 
   public Health health(String server) {
