@@ -37,7 +37,7 @@ Le projet produit deux plugins :
    ```
    Les jars sont dans `velocity/target/` et `paper/target/`. Chaque module est autonome : vous pouvez aussi lancer `mvn clean package` directement dans `velocity/` ou dans `paper/`.
 
-2. **Proxy Velocity** : placez `NexoraAnalytics-Velocity-1.0.0.jar` dans `plugins/`, démarrez le proxy une fois, puis éditez `plugins/nexora-analytics/config.properties` :
+2. **Proxy Velocity** : placez `NexoraAnalytics-Velocity-1.0.0.jar` (≈ 14 Mo, **pas** le fichier `original-…`) dans `plugins/`, démarrez le proxy une fois, puis éditez `plugins/nexora-analytics/config.properties` :
    - `public-url` : l'adresse à laquelle **vous** ouvrirez le dashboard dans votre navigateur (ex. `http://123.45.67.89:8765`) ;
    - `port` : le port du dashboard (à ouvrir dans le pare-feu si vous y accédez depuis l'extérieur) ;
    - `ingest-secret` est généré automatiquement : vous en aurez besoin à l'étape suivante (`analytics secret` dans la console du proxy l'affiche aussi).
@@ -68,3 +68,4 @@ En jeu, tapez **`/analytics`** : un lien cliquable, personnel, **valable 5 minut
 - **Rétention Jn** : part des joueurs arrivés il y a entre n et n + 29 jours qui se sont reconnectés exactement n jours après leur première connexion.
 - **Crashs** : un fichier témoin détecte les arrêts non propres d'un serveur Paper (crash, kill, coupure) ; le proxy signale aussi tout serveur qui ne répond plus au ping.
 - Les données sont conservées dans `plugins/nexora-analytics/analytics.db` (SQLite) ; les échantillons de joueurs en ligne sont gardés 120 jours et les incidents 60 jours (configurable).
+- Le driver SQLite est embarqué dans le jar Velocity. S'il manque (jar `original-…` ou construit sans Maven), il est téléchargé automatiquement depuis Maven Central au premier démarrage dans `plugins/nexora-analytics/libs/` et vérifié par empreinte SHA-256.

@@ -2,9 +2,10 @@ package fr.astra.nexora.analytics.velocity.storage;
 
 import java.nio.file.Path;
 import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.Driver;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,12 +42,15 @@ public final class Database {
 
   public Database(Path file, Logger logger) throws Exception {
     this.logger = logger;
-    Class.forName("org.sqlite.JDBC");
+    Driver driver = SqliteDriver.load(file.toAbsolutePath().getParent().resolve("libs"), logger);
     String url = "jdbc:sqlite:" + file.toAbsolutePath();
     executor
         .submit(
             () -> {
-              connection = DriverManager.getConnection(url);
+              // Connexion ouverte directement via le driver : il peut provenir d'un class loader
+              // externe (voir SqliteDriver), que DriverManager refuserait.
+              connection = driver.connect(url, new Properties());
+              if (connection == null) throw new SQLException("URL SQLite refusée : " + url);
               try (Statement st = connection.createStatement()) {
                 st.execute("PRAGMA journal_mode=WAL");
                 st.execute("PRAGMA synchronous=NORMAL");
