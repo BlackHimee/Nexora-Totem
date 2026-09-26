@@ -17,7 +17,8 @@ import org.bukkit.plugin.Plugin;
  * objectifs du jour). Le proxy compare ensuite les instantanés successifs pour en déduire les
  * créations d'îles et les chunks débloqués. L'accès se fait par réflexion via les accesseurs
  * publics de NexoraMc ({@code getIslands().all()}, {@code getLevels().level(ile)}), sans
- * dépendance de compilation.
+ * dépendance de compilation. Compatible avec les îles à bordure ({@code borderSize()}) et les îles
+ * agrandies chunk par chunk ({@code chunkCount()}, branche astraos).
  */
 public final class IslandCollector {
   private final Logger logger;
@@ -49,14 +50,17 @@ public final class IslandCollector {
         if (level == null && levels != null) level = findMethod(levels.getClass(), "level", island.getClass());
         JsonObject o = new JsonObject();
         o.addProperty("id", String.valueOf(call(island, "id")));
-        Object name = call(island, "name");
+        Object name = optional(island, "name");
         o.addProperty("name", name == null ? null : String.valueOf(name));
         o.addProperty("owner", String.valueOf(call(island, "owner")));
-        o.addProperty("border", ((Number) call(island, "borderSize")).doubleValue());
-        o.addProperty("members", ((Number) call(island, "memberCount")).intValue());
+        // Deux générations de NexoraMc : îles agrandies chunk par chunk (chunkCount) ou délimitées
+        // par une bordure (borderSize, en blocs). On envoie ce qui est disponible.
+        if (optional(island, "chunkCount") instanceof Number chunks) o.addProperty("chunks", chunks.doubleValue());
+        if (optional(island, "borderSize") instanceof Number border) o.addProperty("border", border.doubleValue());
+        if (optional(island, "memberCount") instanceof Number members) o.addProperty("members", members.intValue());
         o.addProperty("level", level == null ? 1 : ((Number) level.invoke(levels, island)).intValue());
-        o.addProperty("milestones", completed(call(island, "milestones")));
-        o.addProperty("objectivesDone", completed(call(island, "objectives")));
+        o.addProperty("milestones", completed(optional(island, "milestones")));
+        o.addProperty("objectivesDone", completed(optional(island, "objectives")));
         list.add(o);
       }
       JsonObject out = new JsonObject();
@@ -85,6 +89,15 @@ public final class IslandCollector {
     int n = 0;
     for (Object o : list) if (Boolean.TRUE.equals(call(o, "completed"))) n++;
     return n;
+  }
+
+  /** Comme {@link #call}, mais renvoie {@code null} si la méthode n'existe pas dans cette version. */
+  private static Object optional(Object target, String method) throws Exception {
+    try {
+      return call(target, method);
+    } catch (NoSuchMethodException e) {
+      return null;
+    }
   }
 
   private static Object call(Object target, String method) throws Exception {

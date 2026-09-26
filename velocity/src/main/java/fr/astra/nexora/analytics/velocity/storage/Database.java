@@ -137,6 +137,7 @@ public final class Database {
         name TEXT,
         owner TEXT,
         border REAL NOT NULL DEFAULT 0,
+        chunks REAL,
         level INTEGER NOT NULL DEFAULT 1,
         members INTEGER NOT NULL DEFAULT 1,
         milestones INTEGER NOT NULL DEFAULT 0,
@@ -181,6 +182,18 @@ public final class Database {
     };
     try (Statement st = connection.createStatement()) {
       for (String sql : ddl) st.execute(sql);
+    }
+    // Migrations des bases créées par une version précédente du plugin.
+    addColumnIfMissing("islands", "chunks", "REAL");
+  }
+
+  private void addColumnIfMissing(String table, String column, String type) throws SQLException {
+    try (Statement st = connection.createStatement();
+        java.sql.ResultSet rs = st.executeQuery("PRAGMA table_info(" + table + ")")) {
+      while (rs.next()) if (column.equalsIgnoreCase(rs.getString("name"))) return;
+    }
+    try (Statement st = connection.createStatement()) {
+      st.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
     }
   }
 

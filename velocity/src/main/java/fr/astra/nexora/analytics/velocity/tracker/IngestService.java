@@ -166,7 +166,8 @@ public final class IngestService {
     Map<String, Double> known = new HashMap<>();
     Set<String> deleted = new HashSet<>();
     try (PreparedStatement ps =
-        c.prepareStatement("SELECT id, border, deleted_at FROM islands WHERE server = ?")) {
+        c.prepareStatement(
+            "SELECT id, COALESCE(chunks, (border / 16.0) * (border / 16.0)), deleted_at FROM islands WHERE server = ?")) {
       ps.setString(1, server);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
@@ -181,10 +182,11 @@ public final class IngestService {
     try (PreparedStatement upsert =
             c.prepareStatement(
                 "INSERT INTO islands (server, id, name, owner, border, level, members, milestones,"
-                    + " objectives_done, created_at, deleted_at, updated_at)"
-                    + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)"
+                    + " objectives_done, created_at, deleted_at, updated_at, chunks)"
+                    + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)"
                     + " ON CONFLICT(server, id) DO UPDATE SET name = excluded.name, owner = excluded.owner,"
-                    + " border = excluded.border, level = excluded.level, members = excluded.members,"
+                    + " border = excluded.border, chunks = excluded.chunks, level = excluded.level,"
+                    + " members = excluded.members,"
                     + " milestones = excluded.milestones, objectives_done = excluded.objectives_done,"
                     + " deleted_at = NULL, updated_at = excluded.updated_at");
         PreparedStatement event =
@@ -197,6 +199,8 @@ public final class IngestService {
         if (id == null) continue;
         seen.add(id);
         double border = dbl(o, "border");
+        // Îles « chunk par chunk » : nombre de chunks envoyé tel quel ; îles à bordure : surface.
+        double chunkCount = o.has("chunks") ? dbl(o, "chunks") : chunks(border);
         boolean isNew = !known.containsKey(id) || deleted.contains(id);
 
         upsert.setString(1, server);
@@ -205,20 +209,21 @@ public final class IngestService {
         upsert.setString(4, str(o, "owner", null));
         upsert.setDouble(5, border);
         upsert.setInt(6, (int) dbl(o, "level"));
-        upsert.setInt(7, (int) dbl(o, "members"));
+        upsert.setInt(7, Math.max(1, (int) dbl(o, "members")));
         upsert.setInt(8, (int) dbl(o, "milestones"));
         upsert.setInt(9, (int) dbl(o, "objectivesDone"));
         if (isNew && !baseline) upsert.setLong(10, now);
         else upsert.setNull(10, java.sql.Types.INTEGER);
         upsert.setLong(11, now);
+        upsert.setDouble(12, chunkCount);
         upsert.addBatch();
 
         if (baseline) continue;
         if (isNew) {
-          addEvent(event, now, day, server, id, "CREATED", chunks(border));
+          addEvent(event, now, day, server, id, "CREATED", chunkCount);
         } else {
           double old = known.get(id);
-          if (border > old + 0.01) addEvent(event, now, day, server, id, "GROWTH", chunks(border) - chunks(old));
+          if (chunkCount > old + 0.01) addEvent(event, now, day, server, id, "GROWTH", chunkCount - old);
         }
       }
       upsert.executeBatch();

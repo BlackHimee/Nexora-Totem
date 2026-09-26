@@ -664,7 +664,8 @@ public final class StatsService {
         ResultSet rs =
             st.executeQuery(
                 "SELECT server, id, name, owner, border, level, members, milestones, objectives_done,"
-                    + " created_at FROM islands WHERE deleted_at IS NULL ORDER BY border DESC")) {
+                    + " created_at, COALESCE(chunks, (border / 16.0) * (border / 16.0)) AS surface"
+                    + " FROM islands WHERE deleted_at IS NULL ORDER BY surface DESC, border DESC")) {
       while (rs.next()) {
         total++;
         double border = rs.getDouble(5);
@@ -672,7 +673,8 @@ public final class StatsService {
         int members = Math.max(1, rs.getInt(7));
         levelSum += level;
         borderSum += border;
-        chunkSum += (border / 16.0) * (border / 16.0);
+        double surface = rs.getDouble(11);
+        chunkSum += surface;
         memberSum += members;
         weightedLevel += (double) level * members;
         milestoneSum += rs.getInt(8);
@@ -684,6 +686,7 @@ public final class StatsService {
           PlayerRow owner = rs.getString(4) == null ? null : players.get(rs.getString(4));
           r.put("owner", owner == null ? "?" : owner.name);
           r.put("border", round(border, 1));
+          r.put("chunks", round(surface, 1));
           r.put("level", level);
           r.put("members", members);
           r.put("milestones", rs.getInt(8));
@@ -740,6 +743,7 @@ public final class StatsService {
     out.put("chunksRange", round(chunksRange, 1));
     out.put("avgLevel", total == 0 ? 0 : round(levelSum / total, 2));
     out.put("avgBorder", total == 0 ? 0 : round(borderSum / total, 1));
+    out.put("avgChunks", total == 0 ? 0 : round(chunkSum / total, 1));
     out.put("avgMembers", total == 0 ? 0 : round((double) memberSum / total, 2));
     out.put("avgMilestones", total == 0 ? 0 : round((double) milestoneSum / total, 2));
     out.put("avgPlayerLevel", memberSum == 0 ? 0 : round(weightedLevel / memberSum, 2));

@@ -109,6 +109,12 @@ public final class ProxyClient {
       String reason = error != null ? error.getClass().getSimpleName() : "HTTP " + response.statusCode();
       logger.warning("Proxy Nexora Analytics injoignable (" + endpoint + ", " + reason
           + "). Les données sont conservées et seront renvoyées.");
+      String host = endpoint.getHost() == null ? "" : endpoint.getHost();
+      if (host.startsWith("127.") || host.equalsIgnoreCase("localhost")) {
+        logger.warning("proxy-url pointe vers " + host + ", c'est-à-dire CE serveur. Chez un hébergeur, chaque"
+            + " serveur est isolé : mettez dans config.yml l'IP publique du proxy et le port du dashboard,"
+            + " par exemple proxy-url: \"http://51.77.12.34:25580\" (la même adresse que public-url du proxy).");
+      }
     }
     failing = true;
   }

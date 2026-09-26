@@ -538,8 +538,10 @@
       { icon: "✨", label: "Îles créées aujourd'hui", value: is.createdToday, color: "#8b5cf6", sub: `${num(is.created7)} sur 7 j · ${num(is.createdRange)} sur ${d.range} j` },
       { icon: "⛏️", label: "Chunks débloqués (total)", value: is.chunksTotal, fmt: "dec", color: "#34d399", sub: `+${dec(is.chunksRange)} sur ${d.range} jours` },
       { icon: "🏆", label: "Progression moyenne des joueurs", value: is.avgPlayerLevel, fmt: "dec", color: "#fbbf24", sub: "Niveau moyen de l'île des joueurs" },
-      { icon: "📐", label: "Niveau moyen des îles", value: is.avgLevel, fmt: "dec", color: "#f472b6", sub: `Bordure moyenne : <b>${dec(is.avgBorder)} blocs</b>` },
-      { icon: "🎯", label: "Succès moyens par île", value: is.avgMilestones, fmt: "dec", color: "#60a5fa", sub: `${dec(is.avgMembers)} membres en moyenne` },
+      { icon: "📐", label: "Niveau moyen des îles", value: is.avgLevel, fmt: "dec", color: "#f472b6", sub: `Taille moyenne : <b>${dec(is.avgChunks)} chunks</b>` },
+      is.avgMilestones > 0
+        ? { icon: "🎯", label: "Succès moyens par île", value: is.avgMilestones, fmt: "dec", color: "#60a5fa", sub: `${dec(is.avgMembers)} membres en moyenne` }
+        : { icon: "👥", label: "Membres moyens par île", value: is.avgMembers, fmt: "dec", color: "#60a5fa", sub: `${num(is.playersWithIsland)} joueurs au total` },
     ]);
     const labels = d.daily.map((r) => r.label);
     bars("c-islands", labels, [{ label: "Îles créées", data: d.daily.map((r) => r.islandsCreated), color: "#22d3ee" }]);
@@ -549,10 +551,10 @@
     ]);
     const t = $("t-islands");
     t.innerHTML = is.top.length
-      ? `<thead><tr><th>#</th><th>Île</th><th>Propriétaire</th><th class="num">Niveau</th><th class="num">Bordure</th><th class="num">Membres</th><th class="num">Succès</th></tr></thead><tbody>${is.top
+      ? `<thead><tr><th>#</th><th>Île</th><th>Propriétaire</th><th class="num">Niveau</th><th class="num">Chunks</th><th class="num">Membres</th><th class="num">Succès</th></tr></thead><tbody>${is.top
           .map(
             (r, i) => `<tr><td>${i + 1}</td><td><b>${esc(r.name || "Sans nom")}</b> <span class="muted small">${esc(r.server)}</span></td><td>${esc(r.owner)}</td>
-          <td class="num"><span class="tag violet">${num(r.level)}</span></td><td class="num">${dec(r.border)} blocs</td><td class="num">${num(r.members)}</td><td class="num">${num(r.milestones)}</td></tr>`
+          <td class="num"><span class="tag violet">${num(r.level)}</span></td><td class="num">${dec(r.chunks)}</td><td class="num">${num(r.members)}</td><td class="num">${num(r.milestones)}</td></tr>`
           )
           .join("")}</tbody>`
       : `<tbody><tr><td class="empty">Aucune île pour le moment</td></tr></tbody>`;
