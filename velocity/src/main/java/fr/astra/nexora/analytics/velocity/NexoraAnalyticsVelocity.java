@@ -67,6 +67,12 @@ public final class NexoraAnalyticsVelocity {
       web = new WebServer(config, auth, stats, ingest, logger);
       web.start();
       logger.info("Nexora Analytics activé. Utilisez /analytics en jeu pour ouvrir le dashboard.");
+      if (AnalyticsConfig.isLocal(config.publicUrl())) {
+        logger.warn("public-url vaut {} : ce lien ne fonctionnera pas depuis votre navigateur.", config.publicUrl());
+        logger.warn("Renseignez public-url=http://<IP de votre serveur>:{} dans plugins/nexora-analytics/config.properties"
+            + " (le port doit être ouvert chez votre hébergeur), puis redémarrez le proxy.", config.port());
+      }
+      logger.info("Secret à copier dans le config.yml des serveurs Paper : tapez 'analytics secret' dans cette console.");
     } catch (Exception e) {
       logger.error("Impossible de démarrer Nexora Analytics", e);
     }

@@ -73,6 +73,12 @@ public final class AnalyticsCommand implements SimpleCommand {
         "  Valable " + config.tokenMinutes() + " min, utilisable une seule fois. Ne le partagez pas.",
         NamedTextColor.DARK_GRAY));
     if (!(source instanceof Player)) source.sendMessage(Component.text("  " + url, NamedTextColor.GRAY));
+    if (AnalyticsConfig.isLocal(config.publicUrl())) {
+      source.sendMessage(Component.text(
+          "  ⚠ public-url n'est pas configurée (" + config.publicUrl() + ") : le lien ne marchera que sur la"
+              + " machine du proxy. Voir plugins/nexora-analytics/config.properties.",
+          NamedTextColor.GOLD));
+    }
     source.sendMessage(Component.empty());
   }
 

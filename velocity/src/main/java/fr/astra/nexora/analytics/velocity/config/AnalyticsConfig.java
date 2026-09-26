@@ -75,8 +75,22 @@ public final class AnalyticsConfig {
 
   /** URL publique du dashboard, utilisée pour construire le lien envoyé en jeu. */
   public String publicUrl() {
-    String url = str("public-url", "http://127.0.0.1:" + port());
+    String url = str("public-url", "");
+    if (url.isEmpty() || isLocal(url)) {
+      // Hébergeurs à panel (Pterodactyl...) : l'IP publique du serveur est fournie par SERVER_IP.
+      String ip = System.getenv("SERVER_IP");
+      if (ip != null && !ip.isBlank() && !ip.startsWith("0.") && !ip.startsWith("127.")) {
+        url = "http://" + ip.trim() + ":" + port();
+      } else if (url.isEmpty()) {
+        url = "http://127.0.0.1:" + port();
+      }
+    }
     return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+  }
+
+  /** Vrai si l'URL désigne la machine locale : inutilisable depuis le navigateur d'un admin. */
+  public static boolean isLocal(String url) {
+    return url.contains("://127.") || url.contains("://localhost") || url.contains("://0.0.0.0");
   }
 
   public String ingestSecret() {
