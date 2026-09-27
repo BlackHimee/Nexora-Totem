@@ -151,7 +151,7 @@
       const valueEl = card.querySelector(".kpi-value");
       if (k.raw !== undefined) valueEl.textContent = k.raw;
       else animateCount(valueEl, Number(k.value) || 0, FORMATS[k.fmt || "num"]);
-      card.querySelector(".kpi-sub").innerHTML = k.sub || "";
+      setHTML(card.querySelector(".kpi-sub"), k.sub || "");
     });
   }
 
@@ -346,12 +346,12 @@
   function leaderboard(containerId, rows, valueFn, barFn, empty) {
     const box = $(containerId);
     if (!rows || !rows.length) {
-      box.innerHTML = `<div class="empty">${esc(empty || "Aucune donnée pour le moment")}</div>`;
+      setHTML(box, `<div class="empty">${esc(empty || "Aucune donnée pour le moment")}</div>`);
       return;
     }
     const max = Math.max(...rows.map(barFn), 1);
     const settled = isSettled(box);
-    box.innerHTML = rows
+    setHTML(box, rows
       .map(
         (r, i) => `
       <div class="lb-row" data-uuid="${esc(r.uuid || "")}" style="animation-delay:${i * 40}ms">
@@ -361,8 +361,16 @@
         <div class="lb-value">${valueFn(r)}</div>
       </div>`
       )
-      .join("");
+      .join(""));
     if (!settled) requestAnimationFrame(() => box.querySelectorAll(".lb-bar i").forEach((b) => (b.style.width = b.dataset.w + "%")));
+  }
+
+  /** Remplace le contenu d'un élément seulement s'il a changé (évite clignotements et rechargements d'images). */
+  function setHTML(el, html) {
+    if (el.__html === html) return false;
+    el.innerHTML = html;
+    el.__html = html;
+    return true;
   }
 
   function playerRow(p) {
@@ -413,16 +421,22 @@
     $("live-online").textContent = num(live.online);
     $("live-count-chip").textContent = `${num(live.online)} joueur${live.online > 1 ? "s" : ""}`;
     const t = $("t-live");
-    t.innerHTML = live.players.length
+    // Le ping change à chaque rafraîchissement : il est mis à jour à part, pour ne pas reconstruire
+    // le tableau (et recharger les têtes des joueurs) toutes les 10 secondes.
+    setHTML(t, live.players.length
       ? `<thead><tr><th>Joueur</th><th>Serveur</th><th>Version</th><th>Client</th><th class="num">Ping</th></tr></thead><tbody>${live.players
           .map(
             (p) => `<tr data-uuid="${esc(p.uuid)}"><td>${playerRow(p)}</td><td><span class="tag violet">${esc(p.server || "—")}</span></td>
-          <td><span class="tag cyan">${esc(p.version)}</span></td><td class="muted">${esc(p.brand)}</td><td class="num">${num(p.ping)} ms</td></tr>`
+          <td><span class="tag cyan">${esc(p.version)}</span></td><td class="muted">${esc(p.brand)}</td><td class="num" data-ping></td></tr>`
           )
           .join("")}</tbody>`
-      : `<tbody><tr><td class="empty">Aucun joueur connecté</td></tr></tbody>`;
+      : `<tbody><tr><td class="empty">Aucun joueur connecté</td></tr></tbody>`);
+    t.querySelectorAll("td[data-ping]").forEach((cell, i) => {
+      const p = live.players[i];
+      if (p) cell.textContent = num(p.ping) + " ms";
+    });
     t.classList.add("table-hover");
-    $("servers-mini").innerHTML = live.servers.length
+    setHTML($("servers-mini"), live.servers.length
       ? live.servers
           .map((s) => {
             const dot = s.status === "online" ? "on" : s.status === "offline" ? "off" : "warn";
@@ -431,7 +445,7 @@
               <div class="meta">${tps}<span class="tag">${num(s.online)} joueur${s.online > 1 ? "s" : ""}</span></div></div>`;
           })
           .join("")
-      : `<div class="empty">Aucun serveur enregistré</div>`;
+      : `<div class="empty">Aucun serveur enregistré</div>`);
     if (state.page === "network") renderServerCards();
   }
 
@@ -456,13 +470,13 @@
     // Cohortes
     const offsets = d.retention.offsets;
     const rows = d.retention.cohorts;
-    $("t-cohorts").innerHTML = `<thead><tr><th>Cohorte</th><th>Joueurs</th>${offsets.map((o) => `<th>J${o}</th>`).join("")}</tr></thead><tbody>${rows
+    setHTML($("t-cohorts"), `<thead><tr><th>Cohorte</th><th>Joueurs</th>${offsets.map((o) => `<th>J${o}</th>`).join("")}</tr></thead><tbody>${rows
       .map(
         (r) => `<tr><td>${esc(r.label)}</td><td>${num(r.size)}</td>${r.values
           .map((v) => (v == null ? `<td class="muted">—</td>` : `<td><span class="cell" style="background:${hexA("#8b5cf6", 0.1 + (0.75 * v) / 100)}">${dec(v)}%</span></td>`))
           .join("")}</tr>`
       )
-      .join("")}</tbody>`;
+      .join("")}</tbody>`);
 
     const labels = d.daily.map((r) => r.label);
     bars("c-connections", labels, [
@@ -485,18 +499,18 @@
         html += `<div class="hc" style="background:${color};animation-delay:${(di * 24 + h) * 3}ms" title="${DAYS[di]} ${pad(h)}h — ${dec(v)} joueurs en moyenne"></div>`;
       });
     });
-    $("heatmap").innerHTML = html;
+    setHTML($("heatmap"), html);
 
     leaderboard("streaks", st.top, (r) => `🔥 ${r.streak} j`, (r) => r.streak, "Aucune série en cours");
 
     $("inactive-sub").textContent = `Sans connexion depuis plus de ${ina.thresholdDays} jours`;
     bars("c-inactive", labels, [{ label: "Devenus inactifs", data: d.daily.map((r) => r.becameInactive), color: "#f87171" }]);
     const lost = $("t-lost");
-    lost.innerHTML = ina.lost.length
+    setHTML(lost, ina.lost.length
       ? `<thead><tr><th>Joueur réguliers perdus</th><th>Dernière venue</th><th class="num">Temps de jeu</th><th class="num">Jours actifs</th></tr></thead><tbody>${ina.lost
           .map((p) => `<tr data-uuid="${esc(p.uuid)}"><td>${playerRow(p)}</td><td class="muted">${ago(p.lastSeen)}</td><td class="num">${dur(p.playtimeMs)}</td><td class="num">${num(p.activeDays)}</td></tr>`)
           .join("")}</tbody>`
-      : `<tbody><tr><td class="empty">Aucun joueur régulier perdu récemment 🎉</td></tr></tbody>`;
+      : `<tbody><tr><td class="empty">Aucun joueur régulier perdu récemment 🎉</td></tr></tbody>`);
   }
 
   function renderEconomy() {
@@ -529,9 +543,9 @@
     $("islands-missing").classList.toggle("hidden", is.available);
     if (!is.available) {
       const reports = d.servers.filter((s) => s.islandsStatus);
-      $("islands-missing-detail").innerHTML = reports.length
+      setHTML($("islands-missing-detail"), reports.length
         ? "État remonté par les serveurs : " + reports.map((s) => `<b>${esc(s.name)}</b> → ${esc(s.islandsStatus)}`).join(" · ")
-        : "Aucun serveur Paper n'envoie encore de données au proxy : voir la page <b>Réseau & serveurs</b> et la commande <b>/nanalytics</b>.";
+        : "Aucun serveur Paper n'envoie encore de données au proxy : voir la page <b>Réseau & serveurs</b> et la commande <b>/nanalytics</b>.");
     }
     renderKpis("kpi-islands", [
       { icon: "🏝️", label: "Îles existantes", value: is.total, color: "#22d3ee", sub: `${num(is.playersWithIsland)} joueurs membres (${dec(is.playersWithIslandPct)} %)` },
@@ -550,14 +564,14 @@
       { label: "Îles", data: is.levels.map((l) => l.count), color: is.levels.map((_, i) => PALETTE[i % PALETTE.length]) },
     ]);
     const t = $("t-islands");
-    t.innerHTML = is.top.length
+    setHTML(t, is.top.length
       ? `<thead><tr><th>#</th><th>Île</th><th>Propriétaire</th><th class="num">Niveau</th><th class="num">Chunks</th><th class="num">Membres</th><th class="num">Succès</th></tr></thead><tbody>${is.top
           .map(
             (r, i) => `<tr><td>${i + 1}</td><td><b>${esc(r.name || "Sans nom")}</b> <span class="muted small">${esc(r.server)}</span></td><td>${esc(r.owner)}</td>
           <td class="num"><span class="tag violet">${num(r.level)}</span></td><td class="num">${dec(r.chunks)}</td><td class="num">${num(r.members)}</td><td class="num">${num(r.milestones)}</td></tr>`
           )
           .join("")}</tbody>`
-      : `<tbody><tr><td class="empty">Aucune île pour le moment</td></tr></tbody>`;
+      : `<tbody><tr><td class="empty">Aucune île pour le moment</td></tr></tbody>`);
   }
 
   function renderResources() {
@@ -583,7 +597,7 @@
     const byName = Object.fromEntries((d ? d.servers : []).map((s) => [s.name, s]));
     const list = (liveServers.length ? liveServers : d ? d.servers : []).slice();
     if (d) d.servers.forEach((s) => { if (!list.some((x) => x.name === s.name) && s.collector !== "absent") list.push(s); });
-    $("server-cards").innerHTML = list.length
+    setHTML($("server-cards"), list.length
       ? list
           .map((s, i) => {
             const status = s.status === "online" ? ["on", "En ligne", "green"] : s.status === "offline" ? ["off", "Hors ligne", "red"] : ["warn", "Inconnu", "amber"];
@@ -607,7 +621,7 @@
             </div>`;
           })
           .join("")
-      : `<div class="card empty">Aucun serveur enregistré sur le proxy</div>`;
+      : `<div class="card empty">Aucun serveur enregistré sur le proxy</div>`);
     const meters = $("server-cards").querySelectorAll(".meter i");
     if (isSettled($("server-cards"))) meters.forEach((m) => (m.style.width = m.dataset.w + "%"));
     else requestAnimationFrame(() => meters.forEach((m) => (m.style.width = m.dataset.w + "%")));
@@ -662,7 +676,7 @@
       if (f === "DOWN") return i.type === "DOWN" || i.type === "UP";
       return i.type === f;
     });
-    $("incident-list").innerHTML = list.length
+    setHTML($("incident-list"), list.length
       ? list
           .map((i, idx) => {
             const t = INCIDENT_TYPES[i.type] || { label: i.type, cls: "", icon: "•" };
@@ -674,7 +688,7 @@
             </div>`;
           })
           .join("")
-      : `<div class="empty">Aucun incident 🎉</div>`;
+      : `<div class="empty">Aucun incident 🎉</div>`);
   }
 
   // ------------------------------------------------------------------ joueurs
